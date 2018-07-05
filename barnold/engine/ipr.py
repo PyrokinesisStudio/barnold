@@ -93,7 +93,7 @@ def _worker(data, new_data, redraw_event, mmap_size, mmap_name, state):
         'NODE': lambda n, p, v: nptrs.append((n, p, v)),
     }
 
-    arnold.AiBegin()
+    arnold.AiBegin(arnold.AI_SESSION_INTERACTIVE)
     try:
         # arnold.AiMsgSetConsoleFlags(arnold.AI_LOG_ALL)
         # arnold.AiMsgSetConsoleFlags(0x000E)
@@ -145,7 +145,7 @@ def _worker(data, new_data, redraw_event, mmap_size, mmap_name, state):
                         arnold.AiRenderInterrupt()
                     else:
                         #print("+++ _callback: tile", x, y, width, height)
-                        _buffer = ctypes.cast(buffer, ctypes.POINTER(ctypes.c_ubyte))
+                        _buffer = ctypes.cast(buffer, ctypes.POINTER(ctypes.c_float))
                         a = numpy.ctypeslib.as_array(_buffer, shape=(height, width, 4))
                         rect[y : y + height, x : x + width] = a
                         redraw_event.set()
@@ -183,9 +183,9 @@ def _worker(data, new_data, redraw_event, mmap_size, mmap_name, state):
             data = _Dict()
             _data = new_data.recv()
             while _data is not None:
-                # from pprint import pprint as pp
-                # print("+++ _worker: data")
-                # pp(_data)
+                from pprint import pprint as pp
+                print("+++ _worker: data")
+                pp(_data)
                 data.update(_data)
                 if not new_data.poll():
                     _nodes = data.get('nodes')
@@ -262,7 +262,7 @@ def _main():
             _mmap_size_ = _mmap_size(data.setdefault('options', {}))
             data['mmap_size'] = _mmap_size_
         if data:
-            #print(">>> update [%f]" % time.clock())
+            # print(">>> update [%f]" % time.clock())
             pin.send(data)
         return _mmap_size_, numpy.frombuffer(_mmap_, dtype=numpy.float32)
 
