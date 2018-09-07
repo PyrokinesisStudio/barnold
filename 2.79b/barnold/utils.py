@@ -46,6 +46,7 @@ def print_dict(rand_dict, indent=0):
 
 def _CleanNames(prefix, count):
     def fn(name):
+        _RN = re.compile("[^-0-9A-Za-z_]")  # regex to cleanup names
         return "%s%d::%s" % (prefix, next(count), _RN.sub("_", name))
     return fn
 # ----------------------------------------------------------------------------------------#
