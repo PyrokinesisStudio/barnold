@@ -342,6 +342,13 @@ def export(data, scene, camera, xres, yres, session=None):
     """
     IO.block("Session::Export()")
 
+    render = scene.render
+    aspect_x = render.pixel_aspect_x
+    aspect_y = render.pixel_aspect_y
+    # offsets for border render
+    xoff = 0
+    yoff = 0
+
     def _export_camera(camera):
         if camera:
             name = "C::" + _RN.sub("_", camera.name)
@@ -390,6 +397,79 @@ def export(data, scene, camera, xres, yres, session=None):
                 arnold.AiNodeSetVec2(node, "screen_window_max", 1, -1)
             arnold.AiNodeSetFlt(node, "exposure", cp.exposure)
             arnold.AiNodeSetPtr(options, "camera", node)
+
+    def _export_options(options):
+        arnold.AiNodeSetInt(options, "xres", xres)
+        arnold.AiNodeSetInt(options, "yres", yres)
+        #arnold.AiNodeSetFlt(options, "aspect_ratio", aspect_y / aspect_x)
+        if render.use_border:
+            xoff = int(xres * render.border_min_x)
+            yoff = int(yres * render.border_min_y)
+            arnold.AiNodeSetInt(options, "region_min_x", xoff)
+            arnold.AiNodeSetInt(options, "region_min_y", yoff)
+            arnold.AiNodeSetInt(options, "region_max_x", int(xres * render.border_max_x) - 1)
+            arnold.AiNodeSetInt(options, "region_max_y", int(yres * render.border_max_y) - 1)
+        if not opts.lock_sampling_pattern:
+            arnold.AiNodeSetInt(options, "AA_seed", scene.frame_current)
+        if opts.clamp_sample_values:
+            arnold.AiNodeSetFlt(options, "AA_sample_clamp", opts.AA_sample_clamp)
+            arnold.AiNodeSetBool(options, "AA_sample_clamp_affects_aovs", opts.AA_sample_clamp_affects_aovs)
+        if not opts.auto_threads:
+            arnold.AiNodeSetInt(options, "threads", opts.threads)
+        arnold.AiNodeSetStr(options, "thread_priority", opts.thread_priority)
+        arnold.AiNodeSetStr(options, "pin_threads", opts.pin_threads)
+        arnold.AiNodeSetBool(options, "abort_on_error", opts.abort_on_error)
+        arnold.AiNodeSetBool(options, "abort_on_license_fail", opts.abort_on_license_fail)
+        arnold.AiNodeSetBool(options, "skip_license_check", opts.skip_license_check)
+        arnold.AiNodeSetRGB(options, "error_color_bad_texture", *opts.error_color_bad_texture)
+        arnold.AiNodeSetRGB(options, "error_color_bad_pixel", *opts.error_color_bad_pixel)
+        arnold.AiNodeSetRGB(options, "error_color_bad_shader", *opts.error_color_bad_shader)
+        arnold.AiNodeSetInt(options, "bucket_size", opts.bucket_size)
+        arnold.AiNodeSetStr(options, "bucket_scanning", opts.bucket_scanning)
+        arnold.AiNodeSetBool(options, "ignore_textures", opts.ignore_textures)
+        arnold.AiNodeSetBool(options, "ignore_shaders", opts.ignore_shaders)
+        arnold.AiNodeSetBool(options, "ignore_atmosphere", opts.ignore_atmosphere)
+        arnold.AiNodeSetBool(options, "ignore_lights", opts.ignore_lights)
+        arnold.AiNodeSetBool(options, "ignore_shadows", opts.ignore_shadows)
+        #TODO: DELETE? arnold.AiNodeSetBool(options, "ignore_direct_lighting", opts.ignore_direct_lighting)
+        arnold.AiNodeSetBool(options, "ignore_subdivision", opts.ignore_subdivision)
+        arnold.AiNodeSetBool(options, "ignore_displacement", opts.ignore_displacement)
+        arnold.AiNodeSetBool(options, "ignore_bump", opts.ignore_bump)
+        arnold.AiNodeSetBool(options, "ignore_motion_blur", opts.ignore_motion_blur)
+        arnold.AiNodeSetBool(options, "ignore_dof", opts.ignore_dof)
+        arnold.AiNodeSetBool(options, "ignore_smoothing", opts.ignore_smoothing)
+        arnold.AiNodeSetBool(options, "ignore_sss", opts.ignore_sss)
+        # TODO: DELETE? arnold.AiNodeSetStr(options, "auto_transparency_mode", opts.auto_transparency_mode)
+        arnold.AiNodeSetInt(options, "auto_transparency_depth", opts.auto_transparency_depth)
+        # TODO: DELETE? arnold.AiNodeSetFlt(options, "auto_transparency_threshold", opts.auto_transparency_threshold)
+        arnold.AiNodeSetInt(options, "texture_max_open_files", opts.texture_max_open_files)
+        arnold.AiNodeSetFlt(options, "texture_max_memory_MB", opts.texture_max_memory_MB)
+        arnold.AiNodeSetStr(options, "texture_searchpath", opts.texture_searchpath)
+        arnold.AiNodeSetBool(options, "texture_automip", opts.texture_automip)
+        arnold.AiNodeSetInt(options, "texture_autotile", opts.texture_autotile)
+        arnold.AiNodeSetBool(options, "texture_accept_untiled", opts.texture_accept_untiled)
+        arnold.AiNodeSetBool(options, "texture_accept_unmipped", opts.texture_accept_unmipped)
+        #arnold.AiNodeSetFlt(options, "texture_specular_blur", opts.texture_specular_blur)
+        #arnold.AiNodeSetFlt(options, "texture_diffuse_blur", opts.texture_diffuse_blur)
+        arnold.AiNodeSetFlt(options, "low_light_threshold", opts.low_light_threshold)
+        arnold.AiNodeSetInt(options, "GI_sss_samples", opts.GI_sss_samples)
+        arnold.AiNodeSetBool(options, "sss_use_autobump", opts.sss_use_autobump)
+        arnold.AiNodeSetInt(options, "GI_volume_samples", opts.GI_volume_samples)
+        arnold.AiNodeSetByte(options, "max_subdivisions", opts.max_subdivisions)
+        arnold.AiNodeSetStr(options, "procedural_searchpath", opts.procedural_searchpath)
+        arnold.AiNodeSetStr(options, "plugin_searchpath", opts.plugin_searchpath)
+        # TODO: DELETE? arnold.AiNodeSetFlt(options, "texture_gamma", opts.texture_gamma)
+        # TODO: DELETE? arnold.AiNodeSetFlt(options, "light_gamma", opts.light_gamma)
+        # TODO: DELETE? arnold.AiNodeSetFlt(options, "shader_gamma", opts.shader_gamma)
+        arnold.AiNodeSetInt(options, "GI_diffuse_depth", opts.GI_diffuse_depth)
+        arnold.AiNodeSetInt(options, "GI_specular_depth", opts.GI_specular_depth)
+        # TODO: DELETE? arnold.AiNodeSetInt(options, "GI_reflection_depth", opts.GI_reflection_depth)
+        arnold.AiNodeSetInt(options, "GI_transmission_depth", opts.GI_transmission_depth)
+        arnold.AiNodeSetInt(options, "GI_volume_depth", opts.GI_volume_depth)
+        arnold.AiNodeSetInt(options, "GI_total_depth", opts.GI_total_depth)
+        arnold.AiNodeSetInt(options, "GI_diffuse_samples", opts.GI_diffuse_samples)
+        arnold.AiNodeSetInt(options, "GI_specular_samples", opts.GI_specular_samples)
+        arnold.AiNodeSetInt(options, "GI_transmission_samples", opts.GI_transmission_samples)
 
     def _export_world(world):
         if world:
@@ -684,87 +764,9 @@ def export(data, scene, camera, xres, yres, session=None):
                     nodes[ob] = node
         arnold.AiNodeSetPtr(light_node, "mesh", node)
 
-    render = scene.render
-    aspect_x = render.pixel_aspect_x
-    aspect_y = render.pixel_aspect_y
-    # offsets for border render
-    xoff = 0
-    yoff = 0
 
-    ##############################
-    ## options
     options = arnold.AiUniverseGetOptions()
-    arnold.AiNodeSetInt(options, "xres", xres)
-    arnold.AiNodeSetInt(options, "yres", yres)
-    #arnold.AiNodeSetFlt(options, "aspect_ratio", aspect_y / aspect_x)
-    if render.use_border:
-        xoff = int(xres * render.border_min_x)
-        yoff = int(yres * render.border_min_y)
-        arnold.AiNodeSetInt(options, "region_min_x", xoff)
-        arnold.AiNodeSetInt(options, "region_min_y", yoff)
-        arnold.AiNodeSetInt(options, "region_max_x", int(xres * render.border_max_x) - 1)
-        arnold.AiNodeSetInt(options, "region_max_y", int(yres * render.border_max_y) - 1)
-    if not opts.lock_sampling_pattern:
-        arnold.AiNodeSetInt(options, "AA_seed", scene.frame_current)
-    if opts.clamp_sample_values:
-        arnold.AiNodeSetFlt(options, "AA_sample_clamp", opts.AA_sample_clamp)
-        arnold.AiNodeSetBool(options, "AA_sample_clamp_affects_aovs", opts.AA_sample_clamp_affects_aovs)
-    if not opts.auto_threads:
-        arnold.AiNodeSetInt(options, "threads", opts.threads)
-    arnold.AiNodeSetStr(options, "thread_priority", opts.thread_priority)
-    arnold.AiNodeSetStr(options, "pin_threads", opts.pin_threads)
-    arnold.AiNodeSetBool(options, "abort_on_error", opts.abort_on_error)
-    arnold.AiNodeSetBool(options, "abort_on_license_fail", opts.abort_on_license_fail)
-    arnold.AiNodeSetBool(options, "skip_license_check", opts.skip_license_check)
-    arnold.AiNodeSetRGB(options, "error_color_bad_texture", *opts.error_color_bad_texture)
-    arnold.AiNodeSetRGB(options, "error_color_bad_pixel", *opts.error_color_bad_pixel)
-    arnold.AiNodeSetRGB(options, "error_color_bad_shader", *opts.error_color_bad_shader)
-    arnold.AiNodeSetInt(options, "bucket_size", opts.bucket_size)
-    arnold.AiNodeSetStr(options, "bucket_scanning", opts.bucket_scanning)
-    arnold.AiNodeSetBool(options, "ignore_textures", opts.ignore_textures)
-    arnold.AiNodeSetBool(options, "ignore_shaders", opts.ignore_shaders)
-    arnold.AiNodeSetBool(options, "ignore_atmosphere", opts.ignore_atmosphere)
-    arnold.AiNodeSetBool(options, "ignore_lights", opts.ignore_lights)
-    arnold.AiNodeSetBool(options, "ignore_shadows", opts.ignore_shadows)
-    #TODO: DELETE? arnold.AiNodeSetBool(options, "ignore_direct_lighting", opts.ignore_direct_lighting)
-    arnold.AiNodeSetBool(options, "ignore_subdivision", opts.ignore_subdivision)
-    arnold.AiNodeSetBool(options, "ignore_displacement", opts.ignore_displacement)
-    arnold.AiNodeSetBool(options, "ignore_bump", opts.ignore_bump)
-    arnold.AiNodeSetBool(options, "ignore_motion_blur", opts.ignore_motion_blur)
-    arnold.AiNodeSetBool(options, "ignore_dof", opts.ignore_dof)
-    arnold.AiNodeSetBool(options, "ignore_smoothing", opts.ignore_smoothing)
-    arnold.AiNodeSetBool(options, "ignore_sss", opts.ignore_sss)
-    # TODO: DELETE? arnold.AiNodeSetStr(options, "auto_transparency_mode", opts.auto_transparency_mode)
-    arnold.AiNodeSetInt(options, "auto_transparency_depth", opts.auto_transparency_depth)
-    # TODO: DELETE? arnold.AiNodeSetFlt(options, "auto_transparency_threshold", opts.auto_transparency_threshold)
-    arnold.AiNodeSetInt(options, "texture_max_open_files", opts.texture_max_open_files)
-    arnold.AiNodeSetFlt(options, "texture_max_memory_MB", opts.texture_max_memory_MB)
-    arnold.AiNodeSetStr(options, "texture_searchpath", opts.texture_searchpath)
-    arnold.AiNodeSetBool(options, "texture_automip", opts.texture_automip)
-    arnold.AiNodeSetInt(options, "texture_autotile", opts.texture_autotile)
-    arnold.AiNodeSetBool(options, "texture_accept_untiled", opts.texture_accept_untiled)
-    arnold.AiNodeSetBool(options, "texture_accept_unmipped", opts.texture_accept_unmipped)
-    #arnold.AiNodeSetFlt(options, "texture_specular_blur", opts.texture_specular_blur)
-    #arnold.AiNodeSetFlt(options, "texture_diffuse_blur", opts.texture_diffuse_blur)
-    arnold.AiNodeSetFlt(options, "low_light_threshold", opts.low_light_threshold)
-    arnold.AiNodeSetInt(options, "GI_sss_samples", opts.GI_sss_samples)
-    arnold.AiNodeSetBool(options, "sss_use_autobump", opts.sss_use_autobump)
-    arnold.AiNodeSetInt(options, "GI_volume_samples", opts.GI_volume_samples)
-    arnold.AiNodeSetByte(options, "max_subdivisions", opts.max_subdivisions)
-    arnold.AiNodeSetStr(options, "procedural_searchpath", opts.procedural_searchpath)
-    arnold.AiNodeSetStr(options, "plugin_searchpath", opts.plugin_searchpath)
-    # TODO: DELETE? arnold.AiNodeSetFlt(options, "texture_gamma", opts.texture_gamma)
-    # TODO: DELETE? arnold.AiNodeSetFlt(options, "light_gamma", opts.light_gamma)
-    # TODO: DELETE? arnold.AiNodeSetFlt(options, "shader_gamma", opts.shader_gamma)
-    arnold.AiNodeSetInt(options, "GI_diffuse_depth", opts.GI_diffuse_depth)
-    arnold.AiNodeSetInt(options, "GI_specular_depth", opts.GI_specular_depth)
-    # TODO: DELETE? arnold.AiNodeSetInt(options, "GI_reflection_depth", opts.GI_reflection_depth)
-    arnold.AiNodeSetInt(options, "GI_transmission_depth", opts.GI_transmission_depth)
-    arnold.AiNodeSetInt(options, "GI_volume_depth", opts.GI_volume_depth)
-    arnold.AiNodeSetInt(options, "GI_total_depth", opts.GI_total_depth)
-    arnold.AiNodeSetInt(options, "GI_diffuse_samples", opts.GI_diffuse_samples)
-    arnold.AiNodeSetInt(options, "GI_specular_samples", opts.GI_specular_samples)
-    arnold.AiNodeSetInt(options, "GI_transmission_samples", opts.GI_transmission_samples)
+    _export_options(options)
 
     ##############################
     ## camera
@@ -774,7 +776,6 @@ def export(data, scene, camera, xres, yres, session=None):
     ## world
     _export_world(scene.world)
     
-
     ##############################
     ## outputs
     sft = opts.sample_filter_type
