@@ -65,3 +65,4 @@ target/
 /vs2015/*.pyproj.user
 /vs2015/*.sdf
 /vs2015/*.opensdf
+.vscode/
