@@ -398,6 +398,7 @@ def export(data, scene, camera, xres, yres, session=None):
             arnold.AiNodeSetFlt(node, "exposure", cp.exposure)
             arnold.AiNodeSetPtr(options, "camera", node)
 
+    
     def _export_options(options):
         arnold.AiNodeSetInt(options, "xres", xres)
         arnold.AiNodeSetInt(options, "yres", yres)
@@ -471,6 +472,60 @@ def export(data, scene, camera, xres, yres, session=None):
         arnold.AiNodeSetInt(options, "GI_specular_samples", opts.GI_specular_samples)
         arnold.AiNodeSetInt(options, "GI_transmission_samples", opts.GI_transmission_samples)
 
+
+    def _export_outputs(opts):
+        sft = opts.sample_filter_type
+        filter = arnold.AiNode(sft)
+        arnold.AiNodeSetStr(filter, "name", "__filter")
+        if sft == 'blackman_harris_filter':
+            arnold.AiNodeSetFlt(filter, "width", opts.sample_filter_bh_width)
+        elif sft == 'sinc_filter':
+            arnold.AiNodeSetFlt(filter, "width", opts.sample_filter_sinc_width)
+        elif sft in {'cone_filter',
+                    'cook_filter',
+                    'disk_filter',
+                    'gaussian_filter',
+                    'triangle_filter'}:
+            arnold.AiNodeSetFlt(filter, "width", opts.sample_filter_width)
+        elif sft == 'farthest_filter':
+            arnold.AiNodeSetStr(filter, "domain", opts.sample_filter_domain)
+        elif sft == 'heatmap_filter':
+            arnold.AiNodeSetFlt(filter, "minumum", opts.sample_filter_min)
+            arnold.AiNodeSetFlt(filter, "maximum", opts.sample_filter_max)
+        elif sft == 'variance_filter':
+            arnold.AiNodeSetFlt(filter, "width", opts.sample_filter_width)
+            arnold.AiNodeSetBool(filter, "scalar_mode", opts.sample_filter_scalar_mode)
+
+        display = arnold.AiNode("driver_display_callback")
+        arnold.AiNodeSetStr(display, "name", "__driver")
+        #arnold.AiNodeSetFlt(display, "gamma", opts.display_gamma)
+        #arnold.AiNodeSetBool(display, "rgba_packing", False)
+
+        # TODO: unusable, camera flipped (top to buttom) for tiles hightlighting
+        #png = arnold.AiNode("driver_png")
+        #arnold.AiNodeSetStr(png, "name", "__png")
+        #arnold.AiNodeSetStr(png, "filename", render.frame_path())
+
+        outputs_aovs = (
+            b"RGBA RGBA __filter __driver",
+            # b"RGBA RGBA __filter __png"
+        )
+        outputs = arnold.AiArray(len(outputs_aovs), 1, arnold.AI_TYPE_STRING, *outputs_aovs)
+        arnold.AiNodeSetArray(options, "outputs", outputs)
+        AA_samples = opts.AA_samples
+        if session is not None:
+            session["display"] = display
+            session["offset"] = xoff, yoff
+            if opts.progressive_refinement:
+                # print("YOU HAVE CHOOSEN TO BE PROGRESSIVE! WOO!")
+                isl = opts.initial_sampling_level
+                session["ipr"] = (isl, AA_samples + 1)
+                AA_samples = isl
+        arnold.AiNodeSetInt(options, "AA_samples", AA_samples)
+
+        arnold.AiMsgDebug(b"BARNOLD: <<<")
+
+
     def _export_world(world):
         if world:
             if world.use_nodes:
@@ -487,6 +542,7 @@ def export(data, scene, camera, xres, yres, session=None):
                 # TODO: export world settings
                 pass
     
+
     @contextmanager
     def _Mesh(ob):
         pc = time.perf_counter()
@@ -778,58 +834,9 @@ def export(data, scene, camera, xres, yres, session=None):
     
     ##############################
     ## outputs
-    sft = opts.sample_filter_type
-    filter = arnold.AiNode(sft)
-    arnold.AiNodeSetStr(filter, "name", "__filter")
-    if sft == 'blackman_harris_filter':
-        arnold.AiNodeSetFlt(filter, "width", opts.sample_filter_bh_width)
-    elif sft == 'sinc_filter':
-        arnold.AiNodeSetFlt(filter, "width", opts.sample_filter_sinc_width)
-    elif sft in {'cone_filter',
-                 'cook_filter',
-                 'disk_filter',
-                 'gaussian_filter',
-                 'triangle_filter'}:
-        arnold.AiNodeSetFlt(filter, "width", opts.sample_filter_width)
-    elif sft == 'farthest_filter':
-        arnold.AiNodeSetStr(filter, "domain", opts.sample_filter_domain)
-    elif sft == 'heatmap_filter':
-        arnold.AiNodeSetFlt(filter, "minumum", opts.sample_filter_min)
-        arnold.AiNodeSetFlt(filter, "maximum", opts.sample_filter_max)
-    elif sft == 'variance_filter':
-        arnold.AiNodeSetFlt(filter, "width", opts.sample_filter_width)
-        arnold.AiNodeSetBool(filter, "scalar_mode", opts.sample_filter_scalar_mode)
+    _export_outputs(opts)
 
-    display = arnold.AiNode("driver_display_callback")
-    arnold.AiNodeSetStr(display, "name", "__driver")
-    #arnold.AiNodeSetFlt(display, "gamma", opts.display_gamma)
-    #arnold.AiNodeSetBool(display, "rgba_packing", False)
-
-    # TODO: unusable, camera flipped (top to buttom) for tiles hightlighting
-    #png = arnold.AiNode("driver_png")
-    #arnold.AiNodeSetStr(png, "name", "__png")
-    #arnold.AiNodeSetStr(png, "filename", render.frame_path())
-
-    outputs_aovs = (
-        b"RGBA RGBA __filter __driver",
-        # b"RGBA RGBA __filter __png"
-    )
-    outputs = arnold.AiArray(len(outputs_aovs), 1, arnold.AI_TYPE_STRING, *outputs_aovs)
-    arnold.AiNodeSetArray(options, "outputs", outputs)
-
-    AA_samples = opts.AA_samples
-    if session is not None:
-        session["display"] = display
-        session["offset"] = xoff, yoff
-        if opts.progressive_refinement:
-            # print("YOU HAVE CHOOSEN TO BE PROGRESSIVE! WOO!")
-            isl = opts.initial_sampling_level
-            session["ipr"] = (isl, AA_samples + 1)
-            AA_samples = isl
-    arnold.AiNodeSetInt(options, "AA_samples", AA_samples)
-
-    arnold.AiMsgDebug(b"BARNOLD: <<<")
-
+    
 
 def export_ass(data, scene, camera, xres, yres, filepath, open_procs, binary):
     arnold.AiBegin()
