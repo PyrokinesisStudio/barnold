@@ -1,5 +1,6 @@
 import random
 import types
+import re
 
 
 def getRandomString(length):
