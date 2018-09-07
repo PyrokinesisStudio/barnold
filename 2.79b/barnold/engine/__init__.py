@@ -104,8 +104,6 @@ def _AiNode(node, prefix, nodes):
     return anode
 
 
-
-
 def _AiPolymesh(mesh, shaders):
     # print("AiPolymesh triggered")
     pc = time.perf_counter()
@@ -320,10 +318,31 @@ def _export_object_properties(ob, node):
         arnold.AiNodeSetBool(node, "subdiv_smooth_derivs", props.subdiv_smooth_derivs)
 
 
-def _export(data, scene, camera, xres, yres, session=None):
+def sync(data, scene, engine):
     """
+    Set each data member with updated data from scene
     """
+    IO.block("Session::Sync()")
+    IO.block("Session::ID - Sync: %d" % self._id)
+    pass
 
+    def _sync_camera():
+        pass
+    def _sync_scene():
+        pass
+    def _sync_lamps():
+        pass
+    def _sync_meshes():
+        pass
+    
+    
+def export(data, scene, camera, xres, yres, session=None):
+    """
+    Callback to re-export the scene to the RenderEngine
+    """
+    IO.block("Session::Export()")
+    def _export_camera():
+        pass
     @contextmanager
     def _Mesh(ob):
         pc = time.perf_counter()
@@ -339,7 +358,6 @@ def _export(data, scene, camera, xres, yres, session=None):
             yield None
 
     _Name = _CleanNames("O", itertools.count())
-
     # enabled scene layers
     layers = [i for i, j in enumerate(scene.layers) if j]
     in_layers = lambda o: any(o.layers[i] for i in layers)
@@ -362,7 +380,7 @@ def _export(data, scene, camera, xres, yres, session=None):
 
     plugins_path = os.path.normpath(os.path.join(os.path.dirname(__file__), os.path.pardir, "bin"))
     arnold.AiLoadPlugins(plugins_path)
-
+    
     ##############################
     ## objects
     for ob in scene.objects:
@@ -439,6 +457,7 @@ def _export(data, scene, camera, xres, yres, session=None):
                         inodes[ob.data] = node
                     # cache for duplicators
                     nodes[ob] = node
+                    
         elif ob.type == 'LAMP':
             lamp = ob.data
             light = lamp.arnold
@@ -822,12 +841,12 @@ def create(engine, data, scene, region=None, v3d=None, rv3d=None, preview_osl=Fa
     IO.block("\n::Create()")
     arnold.AiBegin()
     engine.session = engine.session.create(engine, data, scene)
-    engine.session.export(data, scene, engine)
-    _export(data, scene,
-            engine.camera_override,
-            engine.resolution_x,
-            engine.resolution_y,
-            session=engine.session)
+    export(data, scene, engine.camera_override, engine.resolution_x, engine.resolution_y, session=engine.session)
+    # _export(data, scene,
+    #         engine.camera_override,
+    #         engine.resolution_x,
+    #         engine.resolution_y,
+    #         session=engine.session)
 
 
 def update(engine, data, scene, is_viewport=True):
@@ -836,12 +855,12 @@ def update(engine, data, scene, is_viewport=True):
     # engine.use_highlight_tiles = True
     # engine._session = {}
     arnold.AiBegin()
-    engine.session.sync(data, scene, engine)
-    _export(data, scene,
-            engine.camera_override,
-            engine.resolution_x,
-            engine.resolution_y,
-            session=engine.session)
+    sync(data, scene, engine)
+    # _export(data, scene,
+    #         engine.camera_override,
+    #         engine.resolution_x,
+    #         engine.resolution_y,
+    #         session=engine.session)
 
 
 def free(engine):

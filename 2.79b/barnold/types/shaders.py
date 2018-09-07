@@ -7,7 +7,7 @@ from contextlib import contextmanager
 import bpy
 
 import arnold
-from ..utils import IO
+from ..utils import IO, _CleanNames
 from ..nodes import (
     ArnoldNode,
     ArnoldNodeOutput
@@ -20,7 +20,7 @@ class Shaders:
         self._data = data
         self._shaders = {}
         self._default = arnold.AiNode('lambert')  # default shader, if used
-        self._Name = self._CleanNames("M", itertools.count())
+        self._Name = _CleanNames("M", itertools.count())
 
     def get(self, mat):
         if mat:
@@ -177,8 +177,4 @@ class Shaders:
         arnold.AiNodeSetStr(node, "name", self._Name(mat.name))
         return node
 
-    @staticmethod
-    def _CleanNames(prefix, count):
-        def fn(name):
-            return "%s%d::%s" % (prefix, next(count), _RN.sub("_", name))
-        return fn
+    

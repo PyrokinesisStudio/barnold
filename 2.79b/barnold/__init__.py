@@ -19,7 +19,7 @@ import os
 import itertools
 import re
 from contextlib import contextmanager
-from .utils import IO
+from .utils import IO, _CleanNames
 
 class ArnoldRenderEngine(bpy.types.RenderEngine):
     bl_idname = "ARNOLD_RENDER"
@@ -230,64 +230,7 @@ class Session(dict):
         cls.scene = scene
         return cls()
 
-            
-    def sync(self, data, scene, engine):
-        """
-        Set each data member with updated data from scene
-        """
-        IO.block("Session::Sync()")
-        def _sync_camera():
-            pass
-        def _sync_scene():
-            pass
-        def _sync_lamps():
-            pass
-        def _sync_meshes():
-            pass
-        pass
-        IO.block("Session::ID - Sync: %d" % self._id)
         
-
-    def export(self, data, scene, engine):
-        """
-        Callback to re-export the scene to the RenderEngine
-        """
-        IO.block("Session::Export()")
-        def _export_camera():
-            pass
-
-        @contextmanager
-        def _mesh(ob):
-            pc = time.perf_counter()
-            mesh = ob.to_mesh(scene, True, 'RENDER', False)
-            if mesh is not None:
-                try:
-                    mesh.calc_normals_split()
-                    arnold.AiMsgDebug(b"    mesh (%f)", ctypes.c_double(time.perf_counter() - pc))
-                    yield mesh
-                finally:
-                    data.meshes.remove(mesh)
-            else:
-                yield None
-
-        def _export_mesh():
-            pass
-
-        IO.block("Session::ID - Export: %d" % self._id)
-
-        # _Name = _CleanNames("O", itertools.count())
-
-        # # enabled scene layers
-        # layers = [i for i, j in enumerate(scene.layers) if j]
-        # in_layers = lambda o: any(o.layers[i] for i in layers)
-        # # nodes cache
-        # nodes = {}  # {Object: AiNode}
-        # inodes = {}  # {Object.data: AiNode}
-        # lamp_nodes = {}
-        # mesh_lights = []
-        # duplicators = []
-        # duplicator_parent = False
-
 
     @classmethod
     def cache(cls, session):

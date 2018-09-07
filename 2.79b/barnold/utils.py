@@ -44,7 +44,10 @@ def print_dict(rand_dict, indent=0):
         else:
             print('  ' * (indent + 2) + str(value))
 
-
+def _CleanNames(prefix, count):
+    def fn(name):
+        return "%s%d::%s" % (prefix, next(count), _RN.sub("_", name))
+    return fn
 # ----------------------------------------------------------------------------------------#
 # ----------------------------------------------------------------------------- CLASSES --#
 class bcolors:
