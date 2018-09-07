@@ -22,7 +22,7 @@ class ArnoldRenderEngine(bpy.types.RenderEngine):
     bl_idname = "ARNOLD_RENDER"
     bl_label = "Arnold Render"
     bl_use_preview = True
-    # use_highlight_tiles = True
+    use_highlight_tiles = True
     # bl_use_exclude_layers = False
     # bl_use_postprocess = False
     # bl_use_save_buffers = False
@@ -91,15 +91,17 @@ class ArnoldRenderEngine(bpy.types.RenderEngine):
         if not self.session:
             if self.is_preview:
                 """Create a preview Session using preview render data"""
-                self.session = Session.create(self, data, scene)
+                self.session = Session
+                engine.create(self, data, scene, None, None, None, preview_osl=False)
             else:
                 """Create a final Session using final render data"""
-                self.session = Session.create(self, data, scene)
+                self.session = Session
+                engine.create(self, data, scene)
             """Create Callback - Updates Session"""
-            engine.update(self, data, scene)
-        # else:
-        #     """Reset Session to defaults"""
-        #     engine.reset(self, data, scene)
+            # engine.update(self, data, scene)
+        else:
+            """Reset Session to defaults. Session should never be initialized for Final Render"""
+            engine.reset(self, data, scene)
 
     def render(self, scene):
         IO.block("\nArnoldEngine::Render()")
@@ -128,7 +130,12 @@ class ArnoldRenderEngine(bpy.types.RenderEngine):
         IO.block("\nArnoldEngine:: ViewDraw()")
         engine.view_draw(self, context)
     
-    
+
+    def update_render_passes(self, scene, srl):
+        pass
+        #TODO: engine.register_passes(self, scene, srl)
+
+
     @classmethod
     def _compatible(cls, mod, panels, remove=False):
         import bl_ui
@@ -220,20 +227,8 @@ class Session(dict):
         cls.scene = scene
         return cls()
 
-
-    def update(self, data, scene, is_viewport=False):
-        """
-        Update a render session with non-stale data from Blender
-        Will either sync new data or recreate and re-export the current scene
-        """
-        IO.block("Session::Update()")
-        if is_viewport:
-            return self._sync(data, scene)
-        else:
-            return self._export(data, scene)
             
-
-    def _sync(self, data, scene):
+    def sync(self, data, scene, engine):
         """
         Set each data member with updated data from scene
         """
@@ -250,7 +245,7 @@ class Session(dict):
         IO.block("Session::ID - Sync: %d" % self._id)
         
 
-    def _export(self, data, scene):
+    def export(self, data, scene, engine):
         """
         Callback to re-export the scene to the RenderEngine
         """
@@ -262,7 +257,7 @@ class Session(dict):
 
     @classmethod
     def cache(cls, session):
-        IO.block("Sesssion::Cache()")
+        IO.block("Session::Cache()")
         cls._id = id(session)
         cls.camera = session.camera
         cls.scene = session.scene
@@ -276,24 +271,24 @@ class Session(dict):
         cls.peak = session['peak']
         
 
-    # @classmethod
-    # def reset(cls):
-    #     """
-    #     Reset after Final Render.
-    #     """
-    #     IO.block("Session::Reset()")
-    #     _id     = 0
-    #     cls.camera  = None
-    #     cls.scene   = None
-    #     cls.meshes  = {}
-    #     cls.mesh_instances = {}
-    #     cls.lights  = {}
-    #     cls.display = None
-    #     cls.peak    = None
-    #     cls.mem     = None
-    #     cls.ipr     = None
-    #     cls.offset  = None
-    #     return cls()
+    @classmethod
+    def reset(cls):
+        """
+        Reset after Final Render.
+        """
+        IO.block("Session::Reset()")
+        cls._id     = 0
+        cls.camera  = None
+        cls.scene   = None
+        cls.meshes  = {}
+        cls.mesh_instances = {}
+        cls.lights  = {}
+        cls.display = None
+        cls.peak    = None
+        cls.mem     = None
+        cls.ipr     = None
+        cls.offset  = None
+        return cls()
 
     @classmethod     
     def free(cls):

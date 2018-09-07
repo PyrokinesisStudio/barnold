@@ -978,24 +978,28 @@ def export_ass(data, scene, camera, xres, yres, filepath, open_procs, binary):
         arnold.AiEnd()
 
 
-
 def create(engine, data, scene, region=None, v3d=None, rv3d=None, preview_osl=False):
     """
     Create Routine. For now just prints the camera in the active session we create and give to the engine
     """
     IO.block("\n::Create()")
-    update(engine, data, scene)
-    # engine.session
-    # session.update(data, scene)
-    
+    arnold.AiBegin()
+    engine.session = engine.session.create(engine, data, scene)
+    engine.session.export(data, scene, engine)
+    _export(data, scene,
+            engine.camera_override,
+            engine.resolution_x,
+            engine.resolution_y,
+            session=engine.session)
 
-def update(engine, data, scene, is_viewport=False):
+
+def update(engine, data, scene, is_viewport=True):
     """Synchronize with Blender Data for Viewport Render (IPR)"""
     IO.block("\n::Update()")
     # engine.use_highlight_tiles = True
     # engine._session = {}
     arnold.AiBegin()
-    engine.session.update(data, scene, is_viewport=is_viewport)
+    engine.session.sync(data, scene, engine)
     _export(data, scene,
             engine.camera_override,
             engine.resolution_x,
@@ -1083,11 +1087,11 @@ def render(engine, scene):
         arnold.AiEnd()
 
 
-# def reset(engine):
-#     """Final"""
-#     IO.block("\n::Reset()")
-#     if hasattr(engine, "session"):
-#         engine.session.reset()
+def reset(engine):
+    """Final"""
+    IO.block("\n::Reset()")
+    if hasattr(engine, "session"):
+        engine.session.reset()
 
 
 def view_update(engine, context):
@@ -1346,6 +1350,63 @@ def view_draw(engine, context):
         print("~" * 30)
         traceback.print_exc()
         print("~" * 30)
+
+
+def register_passes(engine, scene, srl):
+    engine.register_pass(scene, srl, "Combined", 4, "RGBA", 'COLOR')
+
+    if srl.use_pass_z:                     engine.register_pass(scene, srl, "Depth",         1, "Z",    'VALUE')
+    if srl.use_pass_mist:                  engine.register_pass(scene, srl, "Mist",          1, "Z",    'VALUE')
+    if srl.use_pass_normal:                engine.register_pass(scene, srl, "Normal",        3, "XYZ",  'VECTOR')
+    if srl.use_pass_vector:                engine.register_pass(scene, srl, "Vector",        4, "XYZW", 'VECTOR')
+    if srl.use_pass_uv:                    engine.register_pass(scene, srl, "UV",            3, "UVA",  'VECTOR')
+    if srl.use_pass_object_index:          engine.register_pass(scene, srl, "IndexOB",       1, "X",    'VALUE')
+    if srl.use_pass_material_index:        engine.register_pass(scene, srl, "IndexMA",       1, "X",    'VALUE')
+    if srl.use_pass_shadow:                engine.register_pass(scene, srl, "Shadow",        3, "RGB",  'COLOR')
+    if srl.use_pass_ambient_occlusion:     engine.register_pass(scene, srl, "AO",            3, "RGB",  'COLOR')
+    if srl.use_pass_diffuse_direct:        engine.register_pass(scene, srl, "DiffDir",       3, "RGB",  'COLOR')
+    if srl.use_pass_diffuse_indirect:      engine.register_pass(scene, srl, "DiffInd",       3, "RGB",  'COLOR')
+    if srl.use_pass_diffuse_color:         engine.register_pass(scene, srl, "DiffCol",       3, "RGB",  'COLOR')
+    if srl.use_pass_glossy_direct:         engine.register_pass(scene, srl, "GlossDir",      3, "RGB",  'COLOR')
+    if srl.use_pass_glossy_indirect:       engine.register_pass(scene, srl, "GlossInd",      3, "RGB",  'COLOR')
+    if srl.use_pass_glossy_color:          engine.register_pass(scene, srl, "GlossCol",      3, "RGB",  'COLOR')
+    if srl.use_pass_transmission_direct:   engine.register_pass(scene, srl, "TransDir",      3, "RGB",  'COLOR')
+    if srl.use_pass_transmission_indirect: engine.register_pass(scene, srl, "TransInd",      3, "RGB",  'COLOR')
+    if srl.use_pass_transmission_color:    engine.register_pass(scene, srl, "TransCol",      3, "RGB",  'COLOR')
+    if srl.use_pass_subsurface_direct:     engine.register_pass(scene, srl, "SubsurfaceDir", 3, "RGB",  'COLOR')
+    if srl.use_pass_subsurface_indirect:   engine.register_pass(scene, srl, "SubsurfaceInd", 3, "RGB",  'COLOR')
+    if srl.use_pass_subsurface_color:      engine.register_pass(scene, srl, "SubsurfaceCol", 3, "RGB",  'COLOR')
+    if srl.use_pass_emit:                  engine.register_pass(scene, srl, "Emit",          3, "RGB",  'COLOR')
+    if srl.use_pass_environment:           engine.register_pass(scene, srl, "Env",           3, "RGB",  'COLOR')
+
+    crl = srl.cycles
+    if crl.pass_debug_render_time:             engine.register_pass(scene, srl, "Debug Render Time",             1, "X",   'VALUE')
+    if crl.pass_debug_bvh_traversed_nodes:     engine.register_pass(scene, srl, "Debug BVH Traversed Nodes",     1, "X",   'VALUE')
+    if crl.pass_debug_bvh_traversed_instances: engine.register_pass(scene, srl, "Debug BVH Traversed Instances", 1, "X",   'VALUE')
+    if crl.pass_debug_bvh_intersections:       engine.register_pass(scene, srl, "Debug BVH Intersections",       1, "X",   'VALUE')
+    if crl.pass_debug_ray_bounces:             engine.register_pass(scene, srl, "Debug Ray Bounces",             1, "X",   'VALUE')
+    if crl.use_pass_volume_direct:             engine.register_pass(scene, srl, "VolumeDir",                     3, "RGB", 'COLOR')
+    if crl.use_pass_volume_indirect:           engine.register_pass(scene, srl, "VolumeInd",                     3, "RGB", 'COLOR')
+
+    cscene = scene.cycles
+    if crl.use_denoising and crl.denoising_store_passes and not cscene.use_progressive_refine:
+        engine.register_pass(scene, srl, "Denoising Normal",          3, "XYZ", 'VECTOR')
+        engine.register_pass(scene, srl, "Denoising Normal Variance", 3, "XYZ", 'VECTOR')
+        engine.register_pass(scene, srl, "Denoising Albedo",          3, "RGB", 'COLOR')
+        engine.register_pass(scene, srl, "Denoising Albedo Variance", 3, "RGB", 'COLOR')
+        engine.register_pass(scene, srl, "Denoising Depth",           1, "Z",   'VALUE')
+        engine.register_pass(scene, srl, "Denoising Depth Variance",  1, "Z",   'VALUE')
+        engine.register_pass(scene, srl, "Denoising Shadow A",        3, "XYV", 'VECTOR')
+        engine.register_pass(scene, srl, "Denoising Shadow B",        3, "XYV", 'VECTOR')
+        engine.register_pass(scene, srl, "Denoising Image",           3, "RGB", 'COLOR')
+        engine.register_pass(scene, srl, "Denoising Image Variance",  3, "RGB", 'COLOR')
+
+        clean_options = ("denoising_diffuse_direct", "denoising_diffuse_indirect",
+                         "denoising_glossy_direct", "denoising_glossy_indirect",
+                         "denoising_transmission_direct", "denoising_transmission_indirect",
+                         "denoising_subsurface_direct", "denoising_subsurface_indirect")
+        if any(getattr(crl, option) for option in clean_options):
+            engine.register_pass(scene, srl, "Denoising Clean", 3, "RGB", 'COLOR')
 
 
 def _view_update_camera(aspect, v3d, rv3d, camera):
