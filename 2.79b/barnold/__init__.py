@@ -21,13 +21,13 @@ class ArnoldRenderEngine(bpy.types.RenderEngine):
     bl_idname = "ARNOLD_RENDER"
     bl_label = "Arnold Render"
     bl_use_preview = True
-    # bl_use_exclude_layers
-    # bl_use_postprocess
-    # bl_use_save_buffers
+    # bl_use_exclude_layers = False
+    # bl_use_postprocess = False
+    # bl_use_save_buffers = False
     # bl_use_shading_nodes = False
-    # bl_use_shading_nodes_custom = True
-    # bl_use_spherical_stereo
-    # bl_use_texture_preview
+    bl_use_shading_nodes_custom = True
+    # bl_use_spherical_stereo = False
+    # bl_use_texture_preview  = False
 
     _CLASSES = []  # classes for (un)register
 
@@ -138,6 +138,35 @@ class ArnoldRenderEngine(bpy.types.RenderEngine):
 
     def __del__(self):
         engine.free(self)
+
+class Session:
+    self.id = id(self)
+    self.active_camera = None
+    self.active_scene = None
+    self.cameras = None
+    self.meshes = None
+    self.mesh_instances = None
+    self.lights = None
+    self.scenes = None
+
+    def __init__(self):
+        self.id = id(self)
+        self.active_camera = None
+        self.active_scene = None
+        self.cameras = {}
+        self.meshes = {}
+        self.mesh_instances = {}
+        self.lights = {}
+        self.scenes = {}
+    
+    @classmethod
+    def create(cls, data, scene):
+        pass
+    
+    @classmethod
+    def update(cls):
+        pass
+
 
 
 def register():
