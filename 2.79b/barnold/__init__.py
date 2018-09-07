@@ -6,7 +6,7 @@ __email__ = "tyler@tylerfurby.com"
 bl_info = {
     "name"          : "Barnold",
     "description"   : "Solid Angle's Arnold Renderer for Blender",
-    "author"        : "Tyler Furby <tyler@tylerfurby.com>", "N.Ildar <nildar@users.sourceforge.net>"
+    "author"        : "Tyler Furby <tyler@tylerfurby.com>,N.Ildar <nildar@users.sourceforge.net>, J.Webber <jared@onelvxe.com>",
     "version"       : (0, 0, 2),
     "blender"       : (2, 79, 0),
     "location"      : "Info header, render engine menu",
@@ -16,6 +16,9 @@ bl_info = {
 import bpy
 import sys
 import os
+import itertools
+import re
+from contextlib import contextmanager
 from .utils import IO
 
 class ArnoldRenderEngine(bpy.types.RenderEngine):
@@ -252,7 +255,38 @@ class Session(dict):
         IO.block("Session::Export()")
         def _export_camera():
             pass
+
+        @contextmanager
+        def _mesh(ob):
+            pc = time.perf_counter()
+            mesh = ob.to_mesh(scene, True, 'RENDER', False)
+            if mesh is not None:
+                try:
+                    mesh.calc_normals_split()
+                    arnold.AiMsgDebug(b"    mesh (%f)", ctypes.c_double(time.perf_counter() - pc))
+                    yield mesh
+                finally:
+                    data.meshes.remove(mesh)
+            else:
+                yield None
+
+        def _export_mesh():
+            pass
+
         IO.block("Session::ID - Export: %d" % self._id)
+
+        # _Name = _CleanNames("O", itertools.count())
+
+        # # enabled scene layers
+        # layers = [i for i, j in enumerate(scene.layers) if j]
+        # in_layers = lambda o: any(o.layers[i] for i in layers)
+        # # nodes cache
+        # nodes = {}  # {Object: AiNode}
+        # inodes = {}  # {Object.data: AiNode}
+        # lamp_nodes = {}
+        # mesh_lights = []
+        # duplicators = []
+        # duplicator_parent = False
 
 
     @classmethod
