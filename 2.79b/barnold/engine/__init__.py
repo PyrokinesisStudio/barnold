@@ -1304,7 +1304,7 @@ def view_draw(engine, context):
         vh = v[3]
         bgl.glRasterPos2f(0, vh - 1.0)
         bgl.glPixelZoom(vw / width, -vh / height)
-        bgl.glDrawPixels(width, height, bgl.GL_RGBA, bgl.GL_FLOAT,
+        bgl.glDrawPixels(width, height, bgl.GL_RGBA, bgl.GL_UNSIGNED_BYTE,
                          bgl.Buffer(bgl.GL_BYTE, len(rect), rect))
         bgl.glPixelZoom(1.0, 1.0)
         bgl.glRasterPos2f(0, 0)

@@ -140,14 +140,13 @@ class ArnoldRenderEngine(bpy.types.RenderEngine):
         engine.free(self)
 
 class Session:
-    self.id = id(self)
-    self.active_camera = None
-    self.active_scene = None
-    self.cameras = None
-    self.meshes = None
-    self.mesh_instances = None
-    self.lights = None
-    self.scenes = None
+    active_camera = None
+    active_scene = None
+    cameras = None
+    meshes = None
+    mesh_instances = None
+    lights = None
+    scenes = None
 
     def __init__(self):
         self.id = id(self)
@@ -158,11 +157,11 @@ class Session:
         self.mesh_instances = {}
         self.lights = {}
         self.scenes = {}
-    
+
     @classmethod
     def create(cls, data, scene):
         pass
-    
+
     @classmethod
     def update(cls):
         pass
