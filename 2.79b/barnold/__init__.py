@@ -22,6 +22,7 @@ class ArnoldRenderEngine(bpy.types.RenderEngine):
     bl_idname = "ARNOLD_RENDER"
     bl_label = "Arnold Render"
     bl_use_preview = True
+    # use_highlight_tiles = True
     # bl_use_exclude_layers = False
     # bl_use_postprocess = False
     # bl_use_save_buffers = False
@@ -161,52 +162,84 @@ class ArnoldRenderEngine(bpy.types.RenderEngine):
 
 
 class Session(dict):
-    _id = 0
-    camera = None
-    scene = None
-    meshes = {}
+    IO.block("Arnold Global Session: -- ID: 0")
+    _id     = 0
+    camera  = None
+    scene   = None
+    meshes  = {}
     mesh_instances = {}
-    lights = {}
+    lights  = {}
     display = None
-    peak = None
-    mem = None
-    ipr = None
+    peak    = None
+    mem     = None
+    ipr     = None
     offset = None
-    IO.block("Arnold Global Session: -- ID: %d" % _id)
+    
 
     def __init__(self, *args, **kwargs):
         IO.block("Session Init: Initializing Class Instance")
-        # self._id = id(self)
+        # Check whether or not this is genesis session instance
         if self._id != 0:
             self._id = id(self)
         self.camera = kwargs.setdefault("camera", None)
         self.scene = kwargs.setdefault("scene", None)
-        self.meshes = {}
-        self.mesh_instances = {}
-        self.lights = {}
+        self.meshes = {'meshes': []}
+        self.mesh_instances = {"instances": []}
+        self.lights = {'lights' : []}
+
 
     @classmethod
     def create(cls, data, scene):
+        """
+        Create a Session, returning a class instance with the current camera and scene
+        """
         IO.block("Create Session: Modifying Class Template")
         return cls(camera=scene.camera, scene=scene)
 
     
     def update(self):
+        """
+        Update a render session with non-stale data from Blender
+        Will either sync new data or recreate and re-export the current scene
+        """
         IO.block("Update Session: Updating Instance Data")
         IO.debug(self.camera)
+
+
+    def _sync(self):
+        """
+        Set each data member with updated data from scene
+        """
+        def _sync_camera():
+            pass
+        def _sync_scene():
+            pass
+        def _sync_lamps():
+            pass
+        def _sync_meshes():
+            pass
+        pass
+
+    
+    def _export(self):
+        """
+        Callback to re-export the scene to the RenderEngine
+        """
+        pass
 
 
     @classmethod
     def cache(cls, session):
         IO.block("Cache Sesssion: Storing Blend Data")
-        # cls.active_camera = session.active_camera
-        # cls.active_scene = session.active_scene
-        # print(session)
-        # cls.cameras = session['cameras']
-        # cls.meshes = session['meshes']
-        # cls.mesh_instances = session['mesh_instances']
-        # cls.lights = session['lights']
-        # cls.scenes = session['scenes']
+        cls.camera = session.camera
+        cls.scene = session.scene
+        cls.meshes = session.meshes
+        cls.mesh_instances = session.mesh_instances
+        cls.lights = session.lights
+        cls.display = session['display']
+        cls.peak = session['mem']
+        # cls.ipr = session['ipr']
+        cls.offset = session['offset']
         cls._id = id(session)
 
 
@@ -218,6 +251,7 @@ class Session(dict):
     # def reset(cls):
     #     cls.active_camera = None
     #     cls.active_scene = None
+
 
 def register():
     from . import addon_preferences
