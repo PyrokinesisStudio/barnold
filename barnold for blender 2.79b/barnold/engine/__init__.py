@@ -1135,6 +1135,7 @@ def view_update(engine, context):
                                 #'smoothing': ('BOOL', True),
                             }))
 
+
             #####################################
             ## camera
             view_matrix = rv3d.view_matrix.copy()
@@ -1245,6 +1246,26 @@ def view_update(engine, context):
         traceback.print_exc()
         print("~" * 30)
 
+def draw_quad(offset_x, offset_y, width, height):
+    bgl.glBegin(bgl.GL_QUADS)
+    # 0, 0 (top left)
+    bgl.glTexCoord2f(0, 0)
+    bgl.glVertex2f(offset_x, offset_y)
+
+    # 1, 0 (top right)
+    bgl.glTexCoord2f(1, 0)
+    bgl.glVertex2f(offset_x + width, offset_y)
+
+    # 1, 1 (bottom right)
+    bgl.glTexCoord2f(1, 1)
+    bgl.glVertex2f(offset_x + width, offset_y + height)
+
+    # 0, 1 (bottom left)
+    bgl.glTexCoord2f(0, 1)
+    bgl.glVertex2f(offset_x, offset_y + height)
+
+    bgl.glEnd()
+
 
 def view_draw(engine, context):
     #print(">>> view_draw [%f]:" % time.clock(), engine)
@@ -1298,16 +1319,58 @@ def view_draw(engine, context):
 
         (width, height), rect = ipr.update(width, height, data)
 
+        # if rv3d.transparent:
+        #     bgl.glEnable(bgl.GL_BLEND)
+
+        bgl.glEnable(bgl.GL_TEXTURE_2D)
+        bgl.glEnable(bgl.GL_COLOR_MATERIAL)
+        bgl.glBindTexture(bgl.GL_TEXTURE_2D, 1)
+
+        bgl.glTexImage2D(bgl.GL_TEXTURE_2D, 0, bgl.GL_RGBA32F, width, height,
+        0, bgl.GL_RGBA, bgl.GL_UNSIGNED_BYTE, bgl.Buffer(bgl.GL_BYTE, len(rect), rect))
+        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_WRAP_S, bgl.GL_CLAMP_TO_EDGE)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_WRAP_T, bgl.GL_CLAMP_TO_EDGE)
+        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_NEAREST)
+        mag_filter = bgl.GL_LINEAR
+        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAG_FILTER, mag_filter)
+
+        if engine.support_display_space_shader(context.scene):
+            # This is the fragment shader that applies Blender color management
+            engine.bind_display_space_shader(context.scene)
+
         v = bgl.Buffer(bgl.GL_FLOAT, 4)
         bgl.glGetFloatv(bgl.GL_VIEWPORT, v)
         vw = v[2]
         vh = v[3]
-        bgl.glRasterPos2f(0, vh - 1.0)
-        bgl.glPixelZoom(vw / width, -vh / height)
-        bgl.glDrawPixels(width, height, bgl.GL_RGBA, bgl.GL_UNSIGNED_BYTE,
-                         bgl.Buffer(bgl.GL_BYTE, len(rect), rect))
-        bgl.glPixelZoom(1.0, 1.0)
-        bgl.glRasterPos2f(0, 0)
+
+        pixel_size = vw / width
+        offset_x, offset_y = rv3d.view_camera_offset
+        draw_quad(offset_x, offset_y, width * pixel_size, height * pixel_size)
+
+        # v = bgl.Buffer(bgl.GL_FLOAT, 4)
+        # bgl.glGetFloatv(bgl.GL_VIEWPORT, v)
+        # vw = v[2]
+        # vh = v[3]
+        # bgl.glRasterPos2f(0, vh - 1.0)
+        # bgl.glPixelZoom(vw / width, -vh / height)
+        # bgl.glDrawPixels(width, height, bgl.GL_RGBA, bgl.GL_UNSIGNED_BYTE,
+        #                  bgl.Buffer(bgl.GL_BYTE, len(rect), rect))
+        # bgl.glPixelZoom(1.0, 1.0)
+        # bgl.glRasterPos2f(0, 0)
+
+        if engine.support_display_space_shader(context.scene):
+            engine.unbind_display_space_shader()
+
+        bgl.glDisable(bgl.GL_COLOR_MATERIAL)
+        bgl.glDisable(bgl.GL_TEXTURE_2D)
+
+        err = bgl.glGetError()
+        if err != bgl.GL_NO_ERROR:
+            print("GL Error:", err)
+
+        # if self._transparent:
+        #     bgl.glDisable(bgl.GL_BLEND)
+
     except:
         print("~" * 30)
         traceback.print_exc()

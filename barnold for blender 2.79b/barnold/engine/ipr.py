@@ -200,6 +200,8 @@ def _worker(data, new_data, redraw_event, mmap_size, mmap_name, state):
                 if not new_data.poll():
                     _nodes = data.get('nodes')
                     if _nodes is not None:
+                        print("HELLO")
+                        print(_nodes)
                         for name, params in _nodes.items():
                             node = arnold.AiNodeLookUpByName(name)
                             for n, (t, v) in params.items():
