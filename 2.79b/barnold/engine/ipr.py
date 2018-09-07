@@ -104,7 +104,6 @@ def _worker(data, new_data, redraw_event, mmap_size, mmap_name, state):
 
         ## Nodes
         for node in data['nodes']:
-            print("WEEEEEEEEEEEEEEEEEEE")
             nt, np = node
             anode = arnold.AiNode(nt)
             for n, (t, v) in np.items():

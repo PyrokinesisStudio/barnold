@@ -72,39 +72,63 @@ class ArnoldRenderEngine(bpy.types.RenderEngine):
     )
 
     def __init__(self):
+        """
+        Constructor a RenderEngine instance() when Blender launches a rendering thread
+        """
         self.session = None
 
+    def __del__(self):
+        """
+        Destructor for a RenderEngine instance when Blender closes a rendering thread
+        """
+        engine.free(self)
+        
     def update(self, data, scene):
-        IO.block("\nArnold: - Engine::Update ")
+        """
+        Update the RenderEngine either via creating a session or resetting to the base session
+        """
+        IO.block("\nArnoldEngine::Update()")
         if not self.session:
-            self.session = Session.create(data, scene)
-
-        engine.update(self, data, scene)
+            if self.is_preview:
+                """Create a preview Session using preview render data"""
+                self.session = Session.create(self, data, scene)
+            else:
+                """Create a final Session using final render data"""
+                self.session = Session.create(self, data, scene)
+            """Create Callback - Updates Session"""
+            engine.update(self, data, scene)
+        # else:
+        #     """Reset Session to defaults"""
+        #     engine.reset(self, data, scene)
 
     def render(self, scene):
-        IO.block("\nArnold: - Engine::Render ")
+        IO.block("\nArnoldEngine::Render()")
         engine.render(self, scene)
     
     def preview_update(self, context, id):
-        IO.block("\nArnold: - Preview::Update ")
+        IO.block("\nAArnoldEngine::PreviewUpdate()")
         pass
     
     def preview_render(self):
-        IO.block("\nArnold: - Preview::Render ")
+        IO.block("\nArnoldEngine::PreviewRender()")
         pass
 
     def view_update(self, context):
-        IO.block("\nArnold: - View::Update ")
+        IO.block("\nArnoldEngine::ViewUpdate()")
+        # if not self.session:
+        #     self.session = Session.create(self, context.blend_data, context.scene)
+        #     engine.create(self, context.blend_data, context.scene,
+        #                   context.region, context.space_data, context.region_data)
+        # else:
+        #     engine.update(self, context.blend_data, context.scene)
+        #     pass
         engine.view_update(self, context)
 
     def view_draw(self, context):
-        IO.block("\nArnold: - View::Draw ")
+        IO.block("\nArnoldEngine:: ViewDraw()")
         engine.view_draw(self, context)
     
-    def __del__(self):
-        engine.free(self)
-
-
+    
     @classmethod
     def _compatible(cls, mod, panels, remove=False):
         import bl_ui
@@ -162,7 +186,6 @@ class ArnoldRenderEngine(bpy.types.RenderEngine):
 
 
 class Session(dict):
-    IO.block("Arnold Global Session: -- ID: 0")
     _id     = 0
     camera  = None
     scene   = None
@@ -173,43 +196,48 @@ class Session(dict):
     peak    = None
     mem     = None
     ipr     = None
-    offset = None
+    offset  = None
     
 
     def __init__(self, *args, **kwargs):
-        IO.block("Session Init: Initializing Class Instance")
-        # Check whether or not this is genesis session instance
+        IO.block("Session::Init()")
         if self._id != 0:
+            IO.block("- New Session")
             self._id = id(self)
-        self.camera = kwargs.setdefault("camera", None)
-        self.scene = kwargs.setdefault("scene", None)
-        self.meshes = {'meshes': []}
-        self.mesh_instances = {"instances": []}
-        self.lights = {'lights' : []}
+            IO.block("Session::ID - Instance: %d" % self._id)
+        elif self._id == 0:
+            IO.block("- Genesis Session")
+            IO.block("Session::ID - Genesis: %d" % self._id)
 
 
     @classmethod
-    def create(cls, data, scene):
+    def create(cls, render_engine, data, scene):
         """
         Create a Session, returning a class instance with the current camera and scene
         """
-        IO.block("Create Session: Modifying Class Template")
-        return cls(camera=scene.camera, scene=scene)
+        IO.block("Session::Create()")
+        cls.camera = scene.camera
+        cls.scene = scene
+        return cls()
 
-    
-    def update(self):
+
+    def update(self, data, scene, is_viewport=False):
         """
         Update a render session with non-stale data from Blender
         Will either sync new data or recreate and re-export the current scene
         """
-        IO.block("Update Session: Updating Instance Data")
-        IO.debug(self.camera)
+        IO.block("Session::Update()")
+        if is_viewport:
+            return self._sync(data, scene)
+        else:
+            return self._export(data, scene)
+            
 
-
-    def _sync(self):
+    def _sync(self, data, scene):
         """
         Set each data member with updated data from scene
         """
+        IO.block("Session::Sync()")
         def _sync_camera():
             pass
         def _sync_scene():
@@ -219,38 +247,62 @@ class Session(dict):
         def _sync_meshes():
             pass
         pass
+        IO.block("Session::ID - Sync: %d" % self._id)
+        
 
-    
-    def _export(self):
+    def _export(self, data, scene):
         """
         Callback to re-export the scene to the RenderEngine
         """
-        pass
+        IO.block("Session::Export()")
+        def _export_camera():
+            pass
+        IO.block("Session::ID - Export: %d" % self._id)
 
 
     @classmethod
     def cache(cls, session):
-        IO.block("Cache Sesssion: Storing Blend Data")
+        IO.block("Sesssion::Cache()")
+        cls._id = id(session)
         cls.camera = session.camera
         cls.scene = session.scene
         cls.meshes = session.meshes
         cls.mesh_instances = session.mesh_instances
         cls.lights = session.lights
         cls.display = session['display']
-        cls.peak = session['mem']
         # cls.ipr = session['ipr']
+        cls.mem = session['mem']
         cls.offset = session['offset']
-        cls._id = id(session)
+        cls.peak = session['peak']
+        
 
+    # @classmethod
+    # def reset(cls):
+    #     """
+    #     Reset after Final Render.
+    #     """
+    #     IO.block("Session::Reset()")
+    #     _id     = 0
+    #     cls.camera  = None
+    #     cls.scene   = None
+    #     cls.meshes  = {}
+    #     cls.mesh_instances = {}
+    #     cls.lights  = {}
+    #     cls.display = None
+    #     cls.peak    = None
+    #     cls.mem     = None
+    #     cls.ipr     = None
+    #     cls.offset  = None
+    #     return cls()
 
     @classmethod     
     def free(cls):
+        """
+        Free after Viewport Render
+        """
+        IO.block("Session::Free()")
         return cls()
-    
-    # @classmethod
-    # def reset(cls):
-    #     cls.active_camera = None
-    #     cls.active_scene = None
+
 
 
 def register():

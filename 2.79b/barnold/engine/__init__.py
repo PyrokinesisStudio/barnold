@@ -978,12 +978,24 @@ def export_ass(data, scene, camera, xres, yres, filepath, open_procs, binary):
         arnold.AiEnd()
 
 
-def update(engine, data, scene):
-    # print("Arnold Engine Updating...")
+
+def create(engine, data, scene, region=None, v3d=None, rv3d=None, preview_osl=False):
+    """
+    Create Routine. For now just prints the camera in the active session we create and give to the engine
+    """
+    IO.block("\n::Create()")
+    update(engine, data, scene)
+    # engine.session
+    # session.update(data, scene)
+    
+
+def update(engine, data, scene, is_viewport=False):
+    """Synchronize with Blender Data for Viewport Render (IPR)"""
+    IO.block("\n::Update()")
     # engine.use_highlight_tiles = True
     # engine._session = {}
     arnold.AiBegin()
-    engine.session.update()
+    engine.session.update(data, scene, is_viewport=is_viewport)
     _export(data, scene,
             engine.camera_override,
             engine.resolution_x,
@@ -991,15 +1003,21 @@ def update(engine, data, scene):
             session=engine.session)
 
 
+def free(engine):
+    """Viewport"""
+    IO.block("\n::Free() [%f]:, %s" % (time.clock(), engine))
+    if hasattr(engine, "_ipr"):
+        engine._ipr.stop()
+        del engine._ipr
+
+        
 def render(engine, scene):
+    IO.block("\n::Render()")
     try:
-        # session = engine._session
         session = engine.session
         xoff, yoff = session["offset"]
-
         _htiles = {}  # highlighted tiles
         session["peak"] = 0  # memory peak usage
-
         def display_callback(x, y, width, height, buffer, data):
             _x = x - xoff
             _y = y - yoff
@@ -1061,12 +1079,20 @@ def render(engine, scene):
         A new instance 
         """
         engine.session.cache(engine.session)
-        engine.session = engine.session.free()
+        # engine.session.free()
         arnold.AiEnd()
+
+
+# def reset(engine):
+#     """Final"""
+#     IO.block("\n::Reset()")
+#     if hasattr(engine, "session"):
+#         engine.session.reset()
 
 
 def view_update(engine, context):
     print(">>> view_update [%f]:" % time.clock(), engine)
+    # engine.session.update(context.blend_data, context.scene, is_viewport=True)
     try:
         ipr = getattr(engine, "_ipr", None)
         if ipr is None:
@@ -1320,13 +1346,6 @@ def view_draw(engine, context):
         print("~" * 30)
         traceback.print_exc()
         print("~" * 30)
-
-
-def free(engine):
-    print(">>> free: [%f]:" % time.clock(), engine)
-    if hasattr(engine, "_ipr"):
-        engine._ipr.stop()
-        del engine._ipr
 
 
 def _view_update_camera(aspect, v3d, rv3d, camera):
