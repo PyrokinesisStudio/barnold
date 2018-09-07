@@ -342,7 +342,55 @@ def export(data, scene, camera, xres, yres, session=None):
     """
     IO.block("Session::Export()")
     def _export_camera():
-        pass
+        if camera:
+            name = "C::" + _RN.sub("_", camera.name)
+            mw = camera.matrix_world
+            cdata = camera.data
+            cp = cdata.arnold
+            node = arnold.AiNode("persp_camera")
+            arnold.AiNodeSetStr(node, "name", name)
+            arnold.AiNodeSetMatrix(node, "matrix", _AiMatrix(mw))
+            if cdata.sensor_fit == 'VERTICAL':
+                sw = cdata.sensor_height * xres / yres * aspect_x / aspect_y
+            else:
+                sw = cdata.sensor_width
+                if cdata.sensor_fit == 'AUTO':
+                    x = xres * aspect_x
+                    y = xres * aspect_y
+                    if x < y:
+                        sw *= x / y
+            fov = math.degrees(2 * math.atan(sw / (2 * cdata.lens)))
+            arnold.AiNodeSetFlt(node, "fov", fov)
+            if cdata.dof_object:
+                dof = geometry.distance_point_to_plane(
+                    mw.to_translation(),
+                    cdata.dof_object.matrix_world.to_translation(),
+                    mw.col[2][:3]
+                )
+            else:
+                dof = cdata.dof_distance
+            arnold.AiNodeSetFlt(node, "focus_distance", dof)
+            if cp.enable_dof:
+                arnold.AiNodeSetFlt(node, "aperture_size", cp.aperture_size)
+                arnold.AiNodeSetInt(node, "aperture_blades", cp.aperture_blades)
+                arnold.AiNodeSetFlt(node, "aperture_rotation", cp.aperture_rotation)
+                arnold.AiNodeSetFlt(node, "aperture_blade_curvature", cp.aperture_blade_curvature)
+                arnold.AiNodeSetFlt(node, "aperture_aspect_ratio", cp.aperture_aspect_ratio)
+            arnold.AiNodeSetFlt(node, "near_clip", cdata.clip_start)
+            arnold.AiNodeSetFlt(node, "far_clip", cdata.clip_end)
+            arnold.AiNodeSetFlt(node, "shutter_start", cp.shutter_start)
+            arnold.AiNodeSetFlt(node, "shutter_end", cp.shutter_end)
+            arnold.AiNodeSetStr(node, "shutter_type", cp.shutter_type)
+            arnold.AiNodeSetStr(node, "rolling_shutter", cp.rolling_shutter)
+            arnold.AiNodeSetFlt(node, "rolling_shutter_duration", cp.rolling_shutter_duration)
+            # TODO: camera shift
+            if session is not None:
+                arnold.AiNodeSetVec2(node, "screen_window_min", -1, 1)
+                arnold.AiNodeSetVec2(node, "screen_window_max", 1, -1)
+            arnold.AiNodeSetFlt(node, "exposure", cp.exposure)
+            arnold.AiNodeSetPtr(options, "camera", node)
+
+    
     @contextmanager
     def _Mesh(ob):
         pc = time.perf_counter()
@@ -704,53 +752,54 @@ def export(data, scene, camera, xres, yres, session=None):
 
     ##############################
     ## camera
-    if camera:
-        name = "C::" + _RN.sub("_", camera.name)
-        mw = camera.matrix_world
-        cdata = camera.data
-        cp = cdata.arnold
-        node = arnold.AiNode("persp_camera")
-        arnold.AiNodeSetStr(node, "name", name)
-        arnold.AiNodeSetMatrix(node, "matrix", _AiMatrix(mw))
-        if cdata.sensor_fit == 'VERTICAL':
-            sw = cdata.sensor_height * xres / yres * aspect_x / aspect_y
-        else:
-            sw = cdata.sensor_width
-            if cdata.sensor_fit == 'AUTO':
-                x = xres * aspect_x
-                y = xres * aspect_y
-                if x < y:
-                    sw *= x / y
-        fov = math.degrees(2 * math.atan(sw / (2 * cdata.lens)))
-        arnold.AiNodeSetFlt(node, "fov", fov)
-        if cdata.dof_object:
-            dof = geometry.distance_point_to_plane(
-                mw.to_translation(),
-                cdata.dof_object.matrix_world.to_translation(),
-                mw.col[2][:3]
-            )
-        else:
-           dof = cdata.dof_distance
-        arnold.AiNodeSetFlt(node, "focus_distance", dof)
-        if cp.enable_dof:
-            arnold.AiNodeSetFlt(node, "aperture_size", cp.aperture_size)
-            arnold.AiNodeSetInt(node, "aperture_blades", cp.aperture_blades)
-            arnold.AiNodeSetFlt(node, "aperture_rotation", cp.aperture_rotation)
-            arnold.AiNodeSetFlt(node, "aperture_blade_curvature", cp.aperture_blade_curvature)
-            arnold.AiNodeSetFlt(node, "aperture_aspect_ratio", cp.aperture_aspect_ratio)
-        arnold.AiNodeSetFlt(node, "near_clip", cdata.clip_start)
-        arnold.AiNodeSetFlt(node, "far_clip", cdata.clip_end)
-        arnold.AiNodeSetFlt(node, "shutter_start", cp.shutter_start)
-        arnold.AiNodeSetFlt(node, "shutter_end", cp.shutter_end)
-        arnold.AiNodeSetStr(node, "shutter_type", cp.shutter_type)
-        arnold.AiNodeSetStr(node, "rolling_shutter", cp.rolling_shutter)
-        arnold.AiNodeSetFlt(node, "rolling_shutter_duration", cp.rolling_shutter_duration)
-        # TODO: camera shift
-        if session is not None:
-            arnold.AiNodeSetVec2(node, "screen_window_min", -1, 1)
-            arnold.AiNodeSetVec2(node, "screen_window_max", 1, -1)
-        arnold.AiNodeSetFlt(node, "exposure", cp.exposure)
-        arnold.AiNodeSetPtr(options, "camera", node)
+    _export_camera()
+    # if camera:
+    #     name = "C::" + _RN.sub("_", camera.name)
+    #     mw = camera.matrix_world
+    #     cdata = camera.data
+    #     cp = cdata.arnold
+    #     node = arnold.AiNode("persp_camera")
+    #     arnold.AiNodeSetStr(node, "name", name)
+    #     arnold.AiNodeSetMatrix(node, "matrix", _AiMatrix(mw))
+    #     if cdata.sensor_fit == 'VERTICAL':
+    #         sw = cdata.sensor_height * xres / yres * aspect_x / aspect_y
+    #     else:
+    #         sw = cdata.sensor_width
+    #         if cdata.sensor_fit == 'AUTO':
+    #             x = xres * aspect_x
+    #             y = xres * aspect_y
+    #             if x < y:
+    #                 sw *= x / y
+    #     fov = math.degrees(2 * math.atan(sw / (2 * cdata.lens)))
+    #     arnold.AiNodeSetFlt(node, "fov", fov)
+    #     if cdata.dof_object:
+    #         dof = geometry.distance_point_to_plane(
+    #             mw.to_translation(),
+    #             cdata.dof_object.matrix_world.to_translation(),
+    #             mw.col[2][:3]
+    #         )
+    #     else:
+    #        dof = cdata.dof_distance
+    #     arnold.AiNodeSetFlt(node, "focus_distance", dof)
+    #     if cp.enable_dof:
+    #         arnold.AiNodeSetFlt(node, "aperture_size", cp.aperture_size)
+    #         arnold.AiNodeSetInt(node, "aperture_blades", cp.aperture_blades)
+    #         arnold.AiNodeSetFlt(node, "aperture_rotation", cp.aperture_rotation)
+    #         arnold.AiNodeSetFlt(node, "aperture_blade_curvature", cp.aperture_blade_curvature)
+    #         arnold.AiNodeSetFlt(node, "aperture_aspect_ratio", cp.aperture_aspect_ratio)
+    #     arnold.AiNodeSetFlt(node, "near_clip", cdata.clip_start)
+    #     arnold.AiNodeSetFlt(node, "far_clip", cdata.clip_end)
+    #     arnold.AiNodeSetFlt(node, "shutter_start", cp.shutter_start)
+    #     arnold.AiNodeSetFlt(node, "shutter_end", cp.shutter_end)
+    #     arnold.AiNodeSetStr(node, "shutter_type", cp.shutter_type)
+    #     arnold.AiNodeSetStr(node, "rolling_shutter", cp.rolling_shutter)
+    #     arnold.AiNodeSetFlt(node, "rolling_shutter_duration", cp.rolling_shutter_duration)
+    #     # TODO: camera shift
+    #     if session is not None:
+    #         arnold.AiNodeSetVec2(node, "screen_window_min", -1, 1)
+    #         arnold.AiNodeSetVec2(node, "screen_window_max", 1, -1)
+    #     arnold.AiNodeSetFlt(node, "exposure", cp.exposure)
+    #     arnold.AiNodeSetPtr(options, "camera", node)
 
     ##############################
     ## world
