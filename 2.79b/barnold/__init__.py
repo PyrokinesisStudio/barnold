@@ -16,6 +16,7 @@ bl_info = {
 import bpy
 import sys
 import os
+from .utils import IO
 
 class ArnoldRenderEngine(bpy.types.RenderEngine):
     bl_idname = "ARNOLD_RENDER"
@@ -68,6 +69,40 @@ class ArnoldRenderEngine(bpy.types.RenderEngine):
         ("properties_data_mesh", None),
         ("properties_particle", None),
     )
+
+    def __init__(self):
+        self.session = None
+
+    def update(self, data, scene):
+        IO.block("\nArnold: - Engine::Update ")
+        if not self.session:
+            self.session = Session.create(data, scene)
+
+        engine.update(self, data, scene)
+
+    def render(self, scene):
+        IO.block("\nArnold: - Engine::Render ")
+        engine.render(self, scene)
+    
+    def preview_update(self, context, id):
+        IO.block("\nArnold: - Preview::Update ")
+        pass
+    
+    def preview_render(self):
+        IO.block("\nArnold: - Preview::Render ")
+        pass
+
+    def view_update(self, context):
+        IO.block("\nArnold: - View::Update ")
+        engine.view_update(self, context)
+
+    def view_draw(self, context):
+        IO.block("\nArnold: - View::Draw ")
+        engine.view_draw(self, context)
+    
+    def __del__(self):
+        engine.free(self)
+
 
     @classmethod
     def _compatible(cls, mod, panels, remove=False):
@@ -124,49 +159,65 @@ class ArnoldRenderEngine(bpy.types.RenderEngine):
     def is_active(cls, context):
         return context.scene.render.engine == cls.bl_idname
 
-    def update(self, data, scene):
-        engine.update(self, data, scene)
 
-    def render(self, scene):
-        engine.render(self, scene)
+class Session(dict):
+    _id = 0
+    camera = None
+    scene = None
+    meshes = {}
+    mesh_instances = {}
+    lights = {}
+    display = None
+    peak = None
+    mem = None
+    ipr = None
+    offset = None
+    IO.block("Arnold Global Session: -- ID: %d" % _id)
 
-    def view_update(self, context):
-        engine.view_update(self, context)
-
-    def view_draw(self, context):
-        engine.view_draw(self, context)
-
-    def __del__(self):
-        engine.free(self)
-
-class Session:
-    active_camera = None
-    active_scene = None
-    cameras = None
-    meshes = None
-    mesh_instances = None
-    lights = None
-    scenes = None
-
-    def __init__(self):
-        self.id = id(self)
-        self.active_camera = None
-        self.active_scene = None
-        self.cameras = {}
+    def __init__(self, *args, **kwargs):
+        IO.block("Session Init: Initializing Class Instance")
+        # self._id = id(self)
+        if self._id != 0:
+            self._id = id(self)
+        self.camera = kwargs.setdefault("camera", None)
+        self.scene = kwargs.setdefault("scene", None)
         self.meshes = {}
         self.mesh_instances = {}
         self.lights = {}
-        self.scenes = {}
 
     @classmethod
     def create(cls, data, scene):
-        pass
+        IO.block("Create Session: Modifying Class Template")
+        return cls(camera=scene.camera, scene=scene)
+
+    
+    def update(self):
+        IO.block("Update Session: Updating Instance Data")
+        IO.debug(self.camera)
+
 
     @classmethod
-    def update(cls):
-        pass
+    def cache(cls, session):
+        IO.block("Cache Sesssion: Storing Blend Data")
+        # cls.active_camera = session.active_camera
+        # cls.active_scene = session.active_scene
+        # print(session)
+        # cls.cameras = session['cameras']
+        # cls.meshes = session['meshes']
+        # cls.mesh_instances = session['mesh_instances']
+        # cls.lights = session['lights']
+        # cls.scenes = session['scenes']
+        cls._id = id(session)
 
 
+    @classmethod     
+    def free(cls):
+        return cls()
+    
+    # @classmethod
+    # def reset(cls):
+    #     cls.active_camera = None
+    #     cls.active_scene = None
 
 def register():
     from . import addon_preferences

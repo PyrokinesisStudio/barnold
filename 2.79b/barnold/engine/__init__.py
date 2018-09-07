@@ -22,7 +22,7 @@ from mathutils import Matrix, Vector, geometry
 #sys.path.append(os.path.join(os.environ["ARNOLD_HOME"],"python"))
 #sys.path.append(r"C:\Program Files\Blender Foundation\Blender\2.79\scripts\modules\Arnold-5.2.0.0-windows\python")
 import arnold
-
+from ..utils import IO
 from ..nodes import (
     ArnoldNode,
     ArnoldNodeOutput,
@@ -106,7 +106,7 @@ def _AiNode(node, prefix, nodes):
 
 class Shaders:
     def __init__(self, data):
-        print("Shader Init")
+        # print("Shader Init")
         self._data = data
 
         self._shaders = {}
@@ -271,7 +271,7 @@ class Shaders:
 
 
 def _AiPolymesh(mesh, shaders):
-    print("AiPolymesh triggered")
+    # print("AiPolymesh triggered")
     pc = time.perf_counter()
 
     verts = mesh.vertices
@@ -979,20 +979,22 @@ def export_ass(data, scene, camera, xres, yres, filepath, open_procs, binary):
 
 
 def update(engine, data, scene):
-    print("Arnold Engine Updating...")
-    engine.use_highlight_tiles = True
-    engine._session = {}
+    # print("Arnold Engine Updating...")
+    # engine.use_highlight_tiles = True
+    # engine._session = {}
     arnold.AiBegin()
+    engine.session.update()
     _export(data, scene,
             engine.camera_override,
             engine.resolution_x,
             engine.resolution_y,
-            session=engine._session)
+            session=engine.session)
 
 
 def render(engine, scene):
     try:
-        session = engine._session
+        # session = engine._session
+        session = engine.session
         xoff, yoff = session["offset"]
 
         _htiles = {}  # highlighted tiles
@@ -1053,7 +1055,13 @@ def render(engine, scene):
         # cancel render on error
         engine.end_result(None, True)
     finally:
-        del engine._session
+        """
+        Finally, cache the current engine session and free it.
+        Caching will store the current session instance variables in the class instance template
+        A new instance 
+        """
+        engine.session.cache(engine.session)
+        engine.session = engine.session.free()
         arnold.AiEnd()
 
 
