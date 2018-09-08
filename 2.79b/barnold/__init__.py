@@ -25,7 +25,6 @@ class ArnoldRenderEngine(bpy.types.RenderEngine):
     bl_idname = "ARNOLD_RENDER"
     bl_label = "Arnold Render"
     bl_use_preview = True
-    use_highlight_tiles = True
     # bl_use_exclude_layers = False
     # bl_use_postprocess = False
     # bl_use_save_buffers = False
@@ -84,6 +83,10 @@ class ArnoldRenderEngine(bpy.types.RenderEngine):
         """
         Destructor for a RenderEngine instance when Blender closes a rendering thread
         """
+        IO.debug("Destroying Renderer")
+        if hasattr(self, "_ipr"):
+            self._ipr.stop()
+            del self._ipr
         engine.free(self)
         
     def update(self, data, scene):
@@ -121,17 +124,18 @@ class ArnoldRenderEngine(bpy.types.RenderEngine):
     def view_update(self, context):
         IO.block("\nArnoldEngine::ViewUpdate()")
         # if not self.session:
-        #     self.session = Session.create(self, context.blend_data, context.scene)
+        #     self.session = Session
         #     engine.create(self, context.blend_data, context.scene,
         #                   context.region, context.space_data, context.region_data)
         # else:
-        #     engine.update(self, context.blend_data, context.scene)
-        #     pass
+        #     engine.update(self, context.blend_data, context.scene,
+        #                     context.region, context.space_data, context.region_data)
+
         engine.view_update(self, context)
 
     def view_draw(self, context):
         IO.block("\nArnoldEngine:: ViewDraw()")
-        engine.view_draw(self, context)
+        engine.view_draw(self, context.region, context.space_data, context.region_data)
     
 
     def update_render_passes(self, scene, srl):
@@ -198,10 +202,14 @@ class ArnoldRenderEngine(bpy.types.RenderEngine):
 class Session(dict):
     _id     = 0
     camera  = None
-    scene   = None
+    scene = None
+    
+    nodes = {}
+    inodes = {}
     meshes  = {}
     mesh_instances = {}
-    lights  = {}
+    lights = {}
+    
     display = None
     peak    = None
     mem     = None
@@ -230,7 +238,6 @@ class Session(dict):
         cls.scene = scene
         return cls()
 
-        
 
     @classmethod
     def cache(cls, session):
@@ -256,10 +263,13 @@ class Session(dict):
         IO.block("Session::Reset()")
         cls._id     = 0
         cls.camera  = None
-        cls.scene   = None
+        cls.scene = None
+        cls.lights  = {}
         cls.meshes  = {}
         cls.mesh_instances = {}
-        cls.lights  = {}
+        cls.mesh_lights = {}
+        cls.nodes = {}
+        cls.inodes = {}
         cls.display = None
         cls.peak    = None
         cls.mem     = None
@@ -274,7 +284,6 @@ class Session(dict):
         """
         IO.block("Session::Free()")
         return cls()
-
 
 
 def register():
