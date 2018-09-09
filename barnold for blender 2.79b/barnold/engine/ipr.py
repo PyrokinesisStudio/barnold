@@ -104,12 +104,19 @@ def _worker(data, new_data, redraw_event, mmap_size, mmap_name, state):
 
         ## Nodes
         for node in data['nodes']:
-            print("WEEEEEEEEEEEEEEEEEEE")
             nt, np = node
             anode = arnold.AiNode(nt)
             for n, (t, v) in np.items():
                 _AiNodeSet[t](anode, n, v)
             nodes[id(node)] = anode
+        ## Shaders
+        for shader in data['shaders']:
+            nt, np = node
+            anode = arnold.AiNode(nt)
+            for n, (t, v) in np.items():
+                _AiNodeSet[t](anode, n, v)
+            nodes[id(shader)] = anode
+        ## Options
         options = arnold.AiUniverseGetOptions()
         for n, (t, v) in data['options'].items():
             _AiNodeSet[t](options, n, v)
@@ -204,6 +211,13 @@ def _worker(data, new_data, redraw_event, mmap_size, mmap_name, state):
                             node = arnold.AiNodeLookUpByName(name)
                             for n, (t, v) in params.items():
                                 _AiNodeSet[t](node, n, v)
+                    _shaders = data.get('shaders')
+                    if _shaders is not None:
+                        print("DID I RUN??")
+                        for name, params in _shaders.items():
+                            shader = arnold.AiNodeLookUpByName(name)
+                            for n, (t, v) in params.items():
+                                _AiNodeSet[t](shader, n, v)
                     opts = data.get('options')
                     if opts is not None:
                         for n, (t, v) in opts.items():
