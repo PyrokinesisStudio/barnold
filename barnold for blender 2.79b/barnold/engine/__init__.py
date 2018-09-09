@@ -1202,22 +1202,23 @@ def view_update(engine, context):
                                 #'smoothing': ('BOOL', True),
                             }))
 
-                            ## Add Shader data
-                            mat = mesh.materials[0]
+                            if mesh.materials:
+                                ## Add Shader data
+                                mat = mesh.materials[0]
 
-                            shader = mat.arnold
-                            if mat.type == 'SURFACE':
-                                node = arnold.AiNode(shader.type)
-                                if shader.type == 'lambert':
-                                    # We should figure out a way to append this to nodes []
-                                    nodes.append(('lambert', {
-                                        'Kd': ('FLOAT', mat.diffuse_intensity),
-                                        'Kd_color': ('RGB', *mat.diffuse_color),
-                                        'opacity': ('RGB', *shader.lambert.opacity)
-                                    }))
+                                shader = mat.arnold
+                                if mat.type == 'SURFACE':
+                                    node = arnold.AiNode(shader.type)
+                                    if shader.type == 'lambert':
+                                        # We should figure out a way to append this to nodes []
+                                        nodes.append(('lambert', {
+                                            'Kd': ('FLOAT', mat.diffuse_intensity),
+                                            'Kd_color': ('RGB', *mat.diffuse_color),
+                                            'opacity': ('RGB', *shader.lambert.opacity)
+                                        }))
 
-                            ## TODO: Assign Shader data to polymesh...
-                            # Create an array based version of _AiPolymesh?
+                                ## TODO: Assign Shader data to polymesh...
+                                # Create an array based version of _AiPolymesh?
             #####################################
             # camera
             view_matrix = rv3d.view_matrix.copy()
